@@ -1,4 +1,5 @@
 import os
+import random
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tango_with_django_project.settings')
 
 import django
@@ -60,6 +61,9 @@ def add_page(cat, title, url, views=0):
 
 def add_cat(name):
     c = Category.objects.get_or_create(name=name)[0]
+    c.likes = random.randint(1, 10)
+    c.views = random.randint(1, 45)
+    c.save()
     return c
 
 # Start execution here!
