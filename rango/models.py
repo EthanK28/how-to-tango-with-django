@@ -1,6 +1,9 @@
 from django.db import models
 from django.template.defaultfilters import slugify
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from django.utils.translation import ugettext_lazy as _
+
 
 # Create your models here.
 
@@ -10,8 +13,15 @@ class Category(models.Model):
     views = models.IntegerField(default=0)
     slug = models.SlugField()
 
+    # def clean(self):
+    #     if self.views < 0 or self.views is None:
+    #         raise ValidationError("Views must be set to 0 or above")
+
     def save(self, *args, **kwargs):
         self.slug  = slugify(self.name)
+
+        if self.views < 0:
+            self.views = 0
         super(Category, self).save(*args, **kwargs)
 
     def __str__(self):
