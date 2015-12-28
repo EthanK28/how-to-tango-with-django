@@ -54,7 +54,6 @@ from django.shortcuts import redirect
 #     return render(request, 'rango/index.html', context_dict)
 
 def index(request):
-
     category_list = Category.objects.order_by('-likes')[:5]
     page_list = Page.objects.order_by('-views')[:5]
 
@@ -82,15 +81,9 @@ def index(request):
         request.session['visits'] = visits
     context_dict['visits'] = visits
 
-    response = render(request, 'rango/index.html' ,context_dict)
+    response = render(request, 'rango/index.html', context_dict)
 
     return response
-
-
-
-
-
-
 
 
 def about(request):
@@ -98,7 +91,6 @@ def about(request):
 
 
 def category(request, category_name_slug):
-
     context_dict = {}
     context_dict['result_list'] = None
     context_dict['query'] = None
@@ -107,7 +99,7 @@ def category(request, category_name_slug):
         query = request.POST['query'].strip()
 
         if query:
-            result_list =  run_query(query)
+            result_list = run_query(query)
 
             context_dict['result_list'] = result_list
             context_dict['query'] = query
@@ -128,8 +120,8 @@ def category(request, category_name_slug):
 
     return render(request, 'rango/category.html', context_dict)
 
-def add_category(request):
 
+def add_category(request):
     if request.method == 'POST':
         form = CategoryForm(request.POST)
 
@@ -140,14 +132,14 @@ def add_category(request):
             return index(request)
 
         else:
-            print (form.errors)
+            print(form.errors)
     else:
         form = CategoryForm()
 
     return render(request, 'rango/add_category.html', {'form': form})
 
-def add_page(request, category_name_slug):
 
+def add_page(request, category_name_slug):
     try:
         cat = Category.objects.get(slug=category_name_slug)
     except Category.DoesNotExist:
@@ -163,7 +155,7 @@ def add_page(request, category_name_slug):
                 page.save()
                 return category(request, category_name_slug)
         else:
-            print (form.errors)
+            print(form.errors)
     else:
         form = PageForm()
 
@@ -173,16 +165,15 @@ def add_page(request, category_name_slug):
 
 
 def register(request):
-
     registered = False
 
     if request.session.test_cookie_worked():
-        print (">>>> TEST COOKIE WORKED!")
+        print(">>>> TEST COOKIE WORKED!")
         request.session.delete_test_cookie()
 
     if request.method == 'POST':
         user_form = UserForm(data=request.POST)
-        profile_form= UserProfileForm(data=request.POST)
+        profile_form = UserProfileForm(data=request.POST)
 
         if user_form.is_valid() and profile_form.is_valid():
             user = user_form.save()
@@ -195,7 +186,7 @@ def register(request):
 
             registered = True
         else:
-            print (user_form.errors, profile_form.errors)
+            print(user_form.errors, profile_form.errors)
 
     else:
         user_form = UserForm()
@@ -203,11 +194,10 @@ def register(request):
 
     return render(request,
                   'rango/register.html',
-                  {'user_form': user_form, 'profile_form' : profile_form})
+                  {'user_form': user_form, 'profile_form': profile_form})
 
 
 def user_login(request):
-
     if request.method == 'POST':
 
         username = request.POST.get('username')
@@ -222,7 +212,7 @@ def user_login(request):
                 return HttpResponseRedirect('/rango/')
         else:
 
-            print ("Invalid login details: {0}, {1}".format(username, password))
+            print("Invalid login details: {0}, {1}".format(username, password))
             return HttpResponse("Invalid login details supplied")
 
 
@@ -242,13 +232,13 @@ def user_logout(request):
 
     return HttpResponseRedirect('/rango/')
 
+
 @login_required
 def profile(request):
     pass
 
 
 def search(request):
-
     result_list = []
 
     if request.method == 'POST':
@@ -278,5 +268,66 @@ def track_url(request):
     return redirect(url)
 
 
+def like_category(request):
+    cat_id = None
+    if request.method == 'GET':
+        cat_id = request.GET['category_id']
+
+    likes = 0
+    if cat_id:
+        cat = Category.objects.get(id=int(cat_id))
+        if cat:
+            likes = cat.likes + 1
+            cat.likes = likes
+            cat.save()
+    return HttpResponse(likes)
 
 
+def get_category_list(max_results=0, starts_with=''):
+    cat_list = []
+    if starts_with:
+        cat_list = Category.objects.filter(name__istartswith=starts_with)
+    else:
+        cat_list = Category.objects.all()
+
+    if max_results > 0:
+        if cat_list.count() > max_results:
+            cat_list = cat_list[:max_results]
+
+    return cat_list
+
+
+def suggest_category(request):
+    print("suggest_category 요청")
+    cat_list = []
+    starts_with = ''
+    if request.method == 'GET':
+        starts_with = request.GET['suggestion']
+
+
+    cat_list = get_category_list(8, starts_with)
+
+
+    return render(request, 'rango/category_list.html', {'cat_list': cat_list})
+
+
+@login_required
+def auto_add_page(request):
+    cat_id = None
+    url = None
+    title = None
+    context_dict = {}
+    if request.method == 'GET':
+        cat_id = request.GET['category_id']
+        url = request.GET['url']
+        title = request.GET['title']
+        if cat_id:
+            category = Category.objects.get(id=int(cat_id))
+            p = Page.objects.get_or_create(category=category, title=title, url=url)
+
+            pages = Page.objects.filter(category=category).order_by('-views')
+
+            # Adds our results list to the template context under name pages.
+            context_dict['pages'] = pages
+
+    return render(request, 'rango/page_list.html', context_dict)
